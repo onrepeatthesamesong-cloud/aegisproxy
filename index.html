@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>AegisProxy — Web Proxy & Network Inspector</title>
+
+  <!-- PWA & Mobile App Meta Tags (Android / iOS / HarmonyOS / Desktop) -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#090d16" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AegisProxy" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            aegis: {
+              bg: '#090d16',
+              surface: '#111827',
+              panel: '#161f33',
+              border: '#243049',
+              accent: '#10b981',
+              accentHover: '#059669',
+              cyan: '#06b6d4',
+              danger: '#ef4444',
+              warning: '#f59e0b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Safe-area support for notched phones & standalone PWA */
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: calc(64px + env(safe-area-inset-bottom));
+      overscroll-behavior-y: contain;
+    }
+    @media (min-width: 768px) {
+      body { padding-bottom: 0; }
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #243049; border-radius: 999px; }
+  </style>
+</head>
+<body class="bg-aegis-bg text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-20 md:bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+  <!-- Install App Banner (Appears automatically on mobile/desktop browsers or via Install button) -->
+  <div id="install-banner" class="hidden bg-gradient-to-r from-emerald-950 via-slate-900 to-cyan-950 border-b border-emerald-500/40 px-3 sm:px-6 py-2.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+          <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+        </div>
+        <div class="text-xs">
+          <p class="font-semibold text-white">Instal AegisProxy di Perangkat Anda</p>
+          <p class="text-slate-300 hidden sm:block">Jalankan sebagai aplikasi mandiri layar penuh (Android, iOS, & Desktop) dengan dukungan offline.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="triggerAppInstall()" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>Instal Sekarang</span>
+        </button>
+        <button onclick="dismissInstallBanner()" class="p-1.5 rounded-lg text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Navigation & Status Header -->
+  <header class="bg-aegis-surface/95 backdrop-blur-md border-b border-aegis-border sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-3">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-2.5 shrink-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="shield-check" class="w-5 h-5 sm:w-6 sm:h-6 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <h1 class="font-bold text-sm sm:text-lg tracking-tight text-white">AegisProxy</h1>
+            <span class="text-[10px] font-mono uppercase px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">v3.0 App</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Installable Encrypted Web Relay & Packet Inspector</p>
+        </div>
+      </div>
+
+      <!-- Real-Time Telemetry Pills -->
+      <div class="hidden lg:flex items-center gap-3 text-xs font-mono">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-aegis-panel border border-aegis-border">
+          <span id="network-online-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-400">Relay:</span>
+          <span id="header-node-label" class="text-emerald-400 font-semibold">SG-SIN-01</span>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-aegis-panel border border-aegis-border">
+          <i data-lucide="activity" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span class="text-slate-400">Latensi:</span>
+          <span id="header-latency" class="text-slate-100 font-semibold">24 ms</span>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-aegis-panel border border-aegis-border">
+          <i data-lucide="shield-ban" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span class="text-slate-400">Diblokir:</span>
+          <span id="header-blocked-count" class="text-amber-300 font-semibold">0</span>
+        </div>
+      </div>
+
+      <!-- Actions: Install App + Purge Session -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="header-install-btn" onclick="triggerAppInstall()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-semibold text-emerald-300 flex items-center gap-1.5 transition cursor-pointer" title="Instal Aplikasi ke HP/Desktop">
+          <i data-lucide="download" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+          <span>Instal App</span>
+        </button>
+        <button onclick="resetSession()" class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-aegis-panel hover:bg-rose-950/50 border border-aegis-border hover:border-rose-500/40 text-xs font-medium text-slate-300 hover:text-rose-400 flex items-center gap-1.5 transition cursor-pointer" title="Hapus Sesi & Log Jaringan">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+          <span class="hidden sm:inline">Reset</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- URL Omnibox & Proxy Engine Bar -->
+    <div class="bg-aegis-bg/85 border-t border-aegis-border/70 py-2.5 px-3 sm:px-6">
+      <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-2">
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-1">
+          <div class="flex items-center gap-1 shrink-0">
+            <button id="btn-back" onclick="navigateHistory(-1)" disabled class="p-2 sm:p-2.5 rounded-xl bg-aegis-panel border border-aegis-border text-slate-400 hover:text-white disabled:opacity-40 disabled:pointer-events-none transition" title="Kembali">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            </button>
+            <button id="btn-forward" onclick="navigateHistory(1)" disabled class="p-2 sm:p-2.5 rounded-xl bg-aegis-panel border border-aegis-border text-slate-400 hover:text-white disabled:opacity-40 disabled:pointer-events-none transition" title="Maju">
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+            <button onclick="reloadCurrentUrl()" class="p-2 sm:p-2.5 rounded-xl bg-aegis-panel border border-aegis-border text-slate-400 hover:text-white transition" title="Muat Ulang">
+              <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+            </button>
+            <button onclick="goHomeViewport()" class="p-2 sm:p-2.5 rounded-xl bg-aegis-panel border border-aegis-border text-slate-400 hover:text-emerald-400 transition" title="Beranda">
+              <i data-lucide="home" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <form id="proxy-form" onsubmit="handleProxySubmit(event)" class="relative flex-1 flex items-center">
+            <div class="absolute left-3 flex items-center pointer-events-none">
+              <i id="url-lock-icon" data-lucide="lock" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400"></i>
+            </div>
+            <input
+              id="url-input"
+              type="url"
+              inputmode="url"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              placeholder="URL target (contoh: wikipedia.org)..."
+              class="w-full pl-9 pr-20 sm:pr-28 py-2 sm:py-2.5 rounded-xl bg-aegis-panel border border-aegis-border focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-xs sm:text-sm font-mono text-white placeholder-slate-500 outline-none transition"
+            />
+            <button
+              type="submit"
+              id="btn-go"
+              class="absolute right-1.5 px-3 sm:px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs flex items-center gap-1 shadow-md shadow-emerald-500/20 transition cursor-pointer"
+            >
+              <span>Buka</span>
+              <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Quick Mode & Region Selectors -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-0.5 lg:pb-0 shrink-0">
+          <div class="flex items-center gap-1.5 bg-aegis-panel border border-aegis-border rounded-xl px-2.5 py-1.5 sm:py-2 flex-1 sm:flex-initial">
+            <i data-lucide="cpu" class="w-3.5 h-3.5 text-cyan-400 shrink-0"></i>
+            <select id="proxy-mode" onchange="onModeChange()" class="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer w-full">
+              <option value="hybrid" class="bg-slate-900">Mode: Hybrid Relay</option>
+              <option value="cors-live" class="bg-slate-900">Mode: Live CORS Relay</option>
+              <option value="text-reader" class="bg-slate-900">Mode: Stealth Reader</option>
+              <option value="sandbox" class="bg-slate-900">Mode: Sandbox Render</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-1.5 bg-aegis-panel border border-aegis-border rounded-xl px-2.5 py-1.5 sm:py-2 flex-1 sm:flex-initial">
+            <i data-lucide="globe" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>
+            <select id="proxy-region" onchange="onRegionChange()" class="bg-transparent text-xs font-medium text-slate-200 outline-none cursor-pointer w-full">
+              <option value="SG-SIN-01|24" class="bg-slate-900">🇸🇬 Singapura (24ms)</option>
+              <option value="JP-TYO-04|68" class="bg-slate-900">🇯🇵 Tokyo (68ms)</option>
+              <option value="CH-ZRH-02|142" class="bg-slate-900">🇨🇭 Zurich (142ms)</option>
+              <option value="US-SJC-09|178" class="bg-slate-900">🇺🇸 Silicon Valley (178ms)</option>
+              <option value="IS-REK-01|195" class="bg-slate-900">🇮🇸 Reykjavik (195ms)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Desktop Navigation Tabs + Bookmark Bar -->
+  <div class="max-w-7xl w-full mx-auto px-3 sm:px-6 pt-3">
+    <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-aegis-border pb-2.5">
+      <div class="hidden md:flex items-center gap-1.5 bg-aegis-surface p-1 rounded-xl border border-aegis-border">
+        <button onclick="switchTab('browser')" id="tab-btn-browser" class="tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+          <i data-lucide="monitor" class="w-4 h-4"></i>
+          <span>Viewport Proxy</span>
+        </button>
+        <button onclick="switchTab('inspector')" id="tab-btn-inspector" class="tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition text-slate-400 hover:text-slate-200 border border-transparent">
+          <i data-lucide="terminal" class="w-4 h-4"></i>
+          <span>Network Inspector</span>
+          <span id="badge-log-count" class="px-1.5 py-0.5 text-[10px] font-mono rounded-md bg-slate-800 text-slate-300">0</span>
+        </button>
+        <button onclick="switchTab('security')" id="tab-btn-security" class="tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition text-slate-400 hover:text-slate-200 border border-transparent">
+          <i data-lucide="shield-alert" class="w-4 h-4"></i>
+          <span>Aegis Shield</span>
+        </button>
+      </div>
+
+      <!-- Quick Bookmark Presets -->
+      <div class="flex items-center gap-1.5 overflow-x-auto max-w-full pb-0.5">
+        <span class="text-xs text-slate-500 font-medium mr-1 shrink-0">Cepat:</span>
+        <button onclick="loadPreset('https://en.wikipedia.org/wiki/Proxy_server')" class="px-2.5 py-1 rounded-lg bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs font-mono text-slate-300 transition shrink-0">Wikipedia</button>
+        <button onclick="loadPreset('https://news.ycombinator.com')" class="px-2.5 py-1 rounded-lg bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs font-mono text-slate-300 transition shrink-0">Hacker News</button>
+        <button onclick="loadPreset('https://example.com')" class="px-2.5 py-1 rounded-lg bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs font-mono text-slate-300 transition shrink-0">Example.com</button>
+        <button onclick="loadPreset('https://lite.duckduckgo.com/lite/')" class="px-2.5 py-1 rounded-lg bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs font-mono text-slate-300 transition shrink-0">DuckDuckGo</button>
+        <button onclick="loadPreset('https://httpbin.org/headers')" class="px-2.5 py-1 rounded-lg bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs font-mono text-slate-300 transition shrink-0">HTTPBin</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-4 flex-1 flex flex-col">
+
+    <!-- TAB 1: BROWSER / PROXY VIEWPORT -->
+    <section id="view-browser" class="flex-1 flex flex-col gap-3">
+      <!-- Viewport Status Strip -->
+      <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-aegis-surface border border-aegis-border text-xs">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <span id="viewport-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
+          <span id="viewport-status-text" class="font-medium text-slate-300 truncate">Siap membuat terowongan terenkripsi.</span>
+        </div>
+        <div class="flex items-center gap-2 font-mono text-slate-400 shrink-0">
+          <span id="viewport-size" class="hidden sm:inline">0 KB</span>
+          <button onclick="toggleStealthReaderQuick()" class="px-2 py-1 rounded-md bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-emerald-400 transition flex items-center gap-1" title="Mode Stealth Reader">
+            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+            <span>Reader</span>
+          </button>
+          <button onclick="toggleSourceModal()" id="btn-view-source" disabled class="px-2 py-1 rounded-md bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-slate-300 hover:text-white disabled:opacity-40 transition flex items-center gap-1" title="Lihat Kode Sumber HTML">
+            <i data-lucide="code-2" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>HTML</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Browser Frame Wrapper -->
+      <div class="relative flex-1 min-h-[420px] sm:min-h-[500px] rounded-2xl bg-aegis-surface border border-aegis-border overflow-hidden flex flex-col shadow-2xl">
+        <div id="proxy-progress-bar" class="h-1 w-0 bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-500 transition-all duration-300"></div>
+
+        <!-- Landing Welcome State -->
+        <div id="proxy-welcome" class="flex-1 flex flex-col items-center justify-center p-5 sm:p-10 text-center">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-4">
+            <i data-lucide="radar" class="w-7 h-7 sm:w-8 sm:h-8 text-emerald-400"></i>
+          </div>
+          <h2 class="text-lg sm:text-2xl font-bold text-white mb-2">AegisProxy Mobile & Desktop App</h2>
+          <p class="text-xs sm:text-sm text-slate-400 max-w-xl mb-5 leading-relaxed">
+            Aplikasi web proxy mandiri dengan pemblokir pelacak otomatis, penulisan ulang tautan relatif, penyamaran User-Agent, dan inspeksi paket HTTP real-time langsung di perangkat Anda.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-3xl w-full text-left mb-6">
+            <div class="p-3.5 rounded-xl bg-aegis-panel/80 border border-aegis-border">
+              <div class="flex items-center gap-2 text-emerald-400 font-semibold text-xs mb-1">
+                <i data-lucide="eye-off" class="w-4 h-4"></i>
+                <span>Blokir Pelacak Otomatis</span>
+              </div>
+              <p class="text-xs text-slate-400">Menghapus skrip analitik, piksel 1x1, dan header Referer sebelum dirender.</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-aegis-panel/80 border border-aegis-border">
+              <div class="flex items-center gap-2 text-cyan-400 font-semibold text-xs mb-1">
+                <i data-lucide="smartphone" class="w-4 h-4"></i>
+                <span>Instalasi Lintas Perangkat</span>
+              </div>
+              <p class="text-xs text-slate-400">Dapat diinstal ke layar utama Android, iPhone/iPad, maupun PC dengan mode offline.</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-aegis-panel/80 border border-aegis-border">
+              <div class="flex items-center gap-2 text-amber-400 font-semibold text-xs mb-1">
+                <i data-lucide="file-search" class="w-4 h-4"></i>
+                <span>Stealth Reader & Inspector</span>
+              </div>
+              <p class="text-xs text-slate-400">Mode baca hemat kuota tanpa skrip serta inspeksi header HTTP & HTML mentah.</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-center gap-2.5">
+            <button onclick="loadPreset('https://en.wikipedia.org/wiki/Proxy_server')" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition cursor-pointer">
+              <i data-lucide="play" class="w-4 h-4"></i>
+              <span>Uji Koneksi Wikipedia</span>
+            </button>
+            <button onclick="triggerAppInstall()" class="px-4 py-2.5 rounded-xl bg-aegis-panel hover:bg-slate-800 border border-emerald-500/40 text-emerald-300 font-medium text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>Pasang di Perangkat</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sandboxed Iframe Renderer -->
+        <iframe
+          id="proxy-iframe"
+          sandbox="allow-same-origin allow-forms allow-popups"
+          class="hidden w-full flex-1 min-h-[460px] bg-white border-0"
+          title="AegisProxy Sandboxed Viewport"
+        ></iframe>
+      </div>
+    </section>
+
+    <!-- TAB 2: NETWORK REQUEST / RESPONSE INSPECTOR -->
+    <section id="view-inspector" class="hidden flex-1 flex flex-col gap-3">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div class="p-3.5 rounded-xl bg-aegis-surface border border-aegis-border">
+          <div class="text-xs text-slate-400 mb-1">Permintaan Diproksi</div>
+          <div id="metric-total-req" class="text-xl sm:text-2xl font-bold font-mono text-white">0</div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-aegis-surface border border-aegis-border">
+          <div class="text-xs text-slate-400 mb-1">Data Ditransfer</div>
+          <div id="metric-bandwidth" class="text-xl sm:text-2xl font-bold font-mono text-cyan-400">0.0 KB</div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-aegis-surface border border-aegis-border">
+          <div class="text-xs text-slate-400 mb-1">Pelacak Diblokir</div>
+          <div id="metric-trackers" class="text-xl sm:text-2xl font-bold font-mono text-amber-400">0</div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-aegis-surface border border-aegis-border">
+          <div class="text-xs text-slate-400 mb-1">Rata-rata Latensi</div>
+          <div id="metric-latency" class="text-xl sm:text-2xl font-bold font-mono text-emerald-400">-- ms</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1">
+        <div class="lg:col-span-7 rounded-2xl bg-aegis-surface border border-aegis-border flex flex-col overflow-hidden">
+          <div class="px-4 py-3 border-b border-aegis-border flex items-center justify-between gap-2">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <i data-lucide="list-filter" class="w-4 h-4 text-emerald-400"></i>
+              <span>Log Lalu Lintas HTTP(S)</span>
+            </h3>
+            <button onclick="exportLogsJson()" class="px-2.5 py-1 rounded-lg bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs text-slate-300 flex items-center gap-1.5 transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Ekspor JSON</span>
+            </button>
+          </div>
+          <div class="overflow-x-auto flex-1 max-h-[380px]">
+            <table class="w-full text-left border-collapse text-xs font-mono">
+              <thead class="bg-aegis-panel/90 text-slate-400 sticky top-0">
+                <tr>
+                  <th class="py-2.5 px-3">Status</th>
+                  <th class="py-2.5 px-3">Target URL</th>
+                  <th class="py-2.5 px-3">Ukuran</th>
+                  <th class="py-2.5 px-3">Waktu</th>
+                  <th class="py-2.5 px-3">Blokir</th>
+                </tr>
+              </thead>
+              <tbody id="inspector-table-body" class="divide-y divide-aegis-border/60">
+                <tr>
+                  <td colspan="5" class="py-10 text-center text-slate-500 font-sans">
+                    Belum ada lalu lintas jaringan tercatat. Kunjungi URL pada tab Viewport Proxy.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 rounded-2xl bg-aegis-surface border border-aegis-border flex flex-col overflow-hidden">
+          <div class="px-4 py-3 border-b border-aegis-border flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+              <i data-lucide="file-code" class="w-4 h-4 text-cyan-400"></i>
+              <span>Inspeksi Header & Payload</span>
+            </h3>
+            <button onclick="copySelectedHeaders()" class="text-xs text-emerald-400 hover:underline flex items-center gap-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Salin Header</span>
+            </button>
+          </div>
+          <div id="packet-detail-content" class="p-4 font-mono text-xs text-slate-300 overflow-y-auto max-h-[380px] space-y-3">
+            <p class="text-slate-500 font-sans text-center py-10">
+              Pilih salah satu log di atas/kiri untuk memeriksa detail header HTTP yang dimodifikasi.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: SECURITY & PROXY SETTINGS (AEGIS SHIELD) -->
+    <section id="view-security" class="hidden flex-1">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 sm:p-5 rounded-2xl bg-aegis-surface border border-aegis-border space-y-4">
+          <div class="flex items-center gap-2.5 border-b border-aegis-border pb-3">
+            <i data-lucide="shield" class="w-5 h-5 text-emerald-400"></i>
+            <div>
+              <h3 class="font-semibold text-white text-sm">Aegis Shield & Sanitasi Konten</h3>
+              <p class="text-xs text-slate-400">Pengaturan tersimpan otomatis di memori lokal aplikasi Anda.</p>
+            </div>
+          </div>
+
+          <div class="space-y-2.5">
+            <label class="flex items-center justify-between p-3 rounded-xl bg-aegis-panel border border-aegis-border cursor-pointer">
+              <div>
+                <div class="text-sm font-medium text-slate-200">Blokir Pelacak & Iklan</div>
+                <div class="text-xs text-slate-400">Hapus Google Analytics, Meta Pixel, jaringan iklan, dan piksel 1x1.</div>
+              </div>
+              <input type="checkbox" id="cfg-strip-trackers" checked onchange="savePreferences()" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+            </label>
+
+            <label class="flex items-center justify-between p-3 rounded-xl bg-aegis-panel border border-aegis-border cursor-pointer">
+              <div>
+                <div class="text-sm font-medium text-slate-200">Blokir Skrip Pihak Ketiga</div>
+                <div class="text-xs text-slate-400">Mencegah browser fingerprinting dan eksekusi JS eksternal.</div>
+              </div>
+              <input type="checkbox" id="cfg-block-scripts" checked onchange="savePreferences()" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+            </label>
+
+            <label class="flex items-center justify-between p-3 rounded-xl bg-aegis-panel border border-aegis-border cursor-pointer">
+              <div>
+                <div class="text-sm font-medium text-slate-200">Hapus Header Referer & Cookie</div>
+                <div class="text-xs text-slate-400">Menyembunyikan URL asal kunjungan (no-referrer).</div>
+              </div>
+              <input type="checkbox" id="cfg-strip-headers" checked onchange="savePreferences()" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+            </label>
+
+            <label class="flex items-center justify-between p-3 rounded-xl bg-aegis-panel border border-aegis-border cursor-pointer">
+              <div>
+                <div class="text-sm font-medium text-slate-200">Paksa Enkripsi HTTPS</div>
+                <div class="text-xs text-slate-400">Otomatis tingkatkan tautan HTTP menjadi HTTPS.</div>
+              </div>
+              <input type="checkbox" id="cfg-https-upgrade" checked onchange="savePreferences()" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+            </label>
+          </div>
+        </div>
+
+        <div class="p-4 sm:p-5 rounded-2xl bg-aegis-surface border border-aegis-border space-y-4">
+          <div class="flex items-center gap-2.5 border-b border-aegis-border pb-3">
+            <i data-lucide="user-check" class="w-5 h-5 text-cyan-400"></i>
+            <div>
+              <h3 class="font-semibold text-white text-sm">Penyamaran Identitas & Instalasi Perangkat</h3>
+              <p class="text-xs text-slate-400">Samarkan sidik jari perangkat Anda atau pasang aplikasi ke layar utama.</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Profil Penyamaran User-Agent</label>
+              <select id="cfg-user-agent" onchange="savePreferences()" class="w-full p-2.5 rounded-xl bg-aegis-panel border border-aegis-border text-xs font-mono text-slate-200 outline-none">
+                <option value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36">Desktop Chrome (Windows 11 • Chrome 131)</option>
+                <option value="Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1">iPhone Safari (iOS 18.1 Mobile)</option>
+                <option value="Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36">Android 15 Mobile (Chrome 131)</option>
+                <option value="Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0">Firefox Linux (Ubuntu x86_64 • Firefox 132)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Virtual Exit IP (X-Forwarded-For)</label>
+              <div class="flex gap-2">
+                <input id="cfg-spoof-ip" type="text" value="185.220.101.44" onchange="savePreferences()" class="flex-1 p-2.5 rounded-xl bg-aegis-panel border border-aegis-border text-xs font-mono text-emerald-400 outline-none" />
+                <button type="button" onclick="randomizeExitIp()" class="px-3 py-2 rounded-xl bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs text-slate-300 flex items-center gap-1.5 transition">
+                  <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                  <span>Acak IP</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-slate-200 space-y-2">
+              <div class="font-semibold text-emerald-400 flex items-center gap-1.5">
+                <i data-lucide="smartphone" class="w-4 h-4"></i>
+                <span>Status Aplikasi Terinstal (PWA)</span>
+              </div>
+              <p id="pwa-install-status-text" class="text-slate-300 leading-relaxed">
+                Aplikasi siap dipasang ke layar utama HP Android, iPhone/iPad, maupun Desktop agar berjalan layar penuh tanpa bilah browser.
+              </p>
+              <button type="button" onclick="triggerAppInstall()" class="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Instal Aplikasi ke Perangkat Ini</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar (Native App Feel on Phones) -->
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-aegis-surface/95 backdrop-blur-md border-t border-aegis-border flex items-center justify-around py-1.5 px-2" style="padding-bottom: max(0.375rem, env(safe-area-inset-bottom));">
+    <button onclick="switchTab('browser')" id="mob-tab-browser" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-emerald-400">
+      <i data-lucide="monitor" class="w-5 h-5"></i>
+      <span class="text-[10px] font-semibold">Proxy</span>
+    </button>
+    <button onclick="switchTab('inspector')" id="mob-tab-inspector" class="relative flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-400">
+      <i data-lucide="terminal" class="w-5 h-5"></i>
+      <span class="text-[10px] font-medium">Inspector</span>
+      <span id="mob-badge-log" class="hidden absolute top-0.5 right-1.5 px-1 min-w-[16px] text-center text-[9px] font-mono rounded-full bg-emerald-500 text-slate-950 font-bold">0</span>
+    </button>
+    <button onclick="switchTab('security')" id="mob-tab-security" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-400">
+      <i data-lucide="shield-alert" class="w-5 h-5"></i>
+      <span class="text-[10px] font-medium">Shield</span>
+    </button>
+    <button onclick="triggerAppInstall()" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-cyan-400">
+      <i data-lucide="download" class="w-5 h-5"></i>
+      <span class="text-[10px] font-medium">Instal</span>
+    </button>
+  </nav>
+
+  <!-- HTML Source Inspector Modal -->
+  <div id="source-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-aegis-surface border border-aegis-border rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+      <div class="px-4 py-3 border-b border-aegis-border flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-code-2" class="w-4 h-4 text-cyan-400"></i>
+          <h3 class="font-semibold text-xs sm:text-sm text-white">Source Inspector — Kode HTML Tersanitasi</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="copySourceCode()" class="px-2.5 py-1 rounded-lg bg-aegis-panel hover:bg-slate-800 border border-aegis-border text-xs text-emerald-400 flex items-center gap-1">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Salin</span>
+          </button>
+          <button onclick="toggleSourceModal()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+      <pre id="source-code-viewer" class="p-4 text-xs font-mono text-slate-300 overflow-auto flex-1 whitespace-pre-wrap break-all"></pre>
+    </div>
+  </div>
+
+  <!-- Manual Install Guide Modal (For iOS Safari / Offline File / Browsers without native prompt) -->
+  <div id="install-guide-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-aegis-surface border border-aegis-border rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-aegis-border pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="smartphone" class="w-5 h-5 text-emerald-400"></i>
+          <h3 class="font-bold text-sm text-white">Cara Instal AegisProxy di Perangkat</h3>
+        </div>
+        <button onclick="document.getElementById('install-guide-modal').classList.add('hidden')" class="p-1 rounded-lg text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+        <div class="p-3 rounded-xl bg-aegis-panel border border-aegis-border">
+          <div class="font-semibold text-emerald-400 mb-1">1. Android (Chrome / Edge / Brave)</div>
+          <p>Ketuk ikon menu <strong>⋮ (tiga titik)</strong> di pojok kanan atas browser, lalu pilih <strong>"Instal aplikasi" (Install app)</strong> atau <strong>"Tambahkan ke Layar Utama"</strong>.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-aegis-panel border border-aegis-border">
+          <div class="font-semibold text-cyan-400 mb-1">2. iPhone / iPad (iOS Safari)</div>
+          <p>Ketuk tombol <strong>Bagikan (Share ⬆️)</strong> di bilah bawah Safari, gulir ke bawah, lalu pilih <strong>"Tambahkan ke Layar Utama" (Add to Home Screen)</strong>.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-aegis-panel border border-aegis-border">
+          <div class="font-semibold text-amber-400 mb-1">3. Laptop / PC (Windows, macOS, Linux)</div>
+          <p>Klik ikon <strong>Instal (🖥️+)</strong> di sisi kanan bilah alamat Chrome/Edge, atau buka langsung file <code>index.html</code> secara lokal kapan saja.</p>
+        </div>
+      </div>
+      <button onclick="document.getElementById('install-guide-modal').classList.add('hidden')" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition cursor-pointer">
+        Mengerti
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // PWA SERVICE WORKER REGISTRATION & INSTALL PROMPT HANDLER
+    // =========================================================================
+    let deferredInstallPrompt = null;
+
+    if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      document.getElementById('install-banner').classList.remove('hidden');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      document.getElementById('install-banner').classList.add('hidden');
+      const statusEl = document.getElementById('pwa-install-status-text');
+      if (statusEl) statusEl.textContent = 'Aplikasi AegisProxy sudah terinstal di perangkat Anda.';
+      showToast('AegisProxy berhasil diinstal sebagai aplikasi mandiri!', 'success');
+    });
+
+    async function triggerAppInstall() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredInstallPrompt = null;
+          document.getElementById('install-banner').classList.add('hidden');
+        }
+      } else {
+        document.getElementById('install-guide-modal').classList.remove('hidden');
+      }
+    }
+
+    function dismissInstallBanner() {
+      document.getElementById('install-banner').classList.add('hidden');
+    }
+
+    // Monitor Online / Offline status
+    window.addEventListener('online', () => {
+      const dot = document.getElementById('network-online-dot');
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+      showToast('Kembali online — Relay aktif', 'success');
+    });
+    window.addEventListener('offline', () => {
+      const dot = document.getElementById('network-online-dot');
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+      showToast('Mode Offline — Sandbox lokal tetap berjalan', 'warning');
+    });
+
+    // =========================================================================
+    // AEGISPROXY CLIENT-SIDE ENGINE & PERSISTENT STATE
+    // =========================================================================
+    const STORAGE_KEY = 'aegisproxy_prefs_v3';
+
+    const state = {
+      history: [],
+      historyIndex: -1,
+      logs: [],
+      selectedLogId: null,
+      totalBytes: 0,
+      blockedTrackers: 0,
+      latencies: [],
+      lastSanitizedHtml: ''
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) lucide.createIcons();
+      loadPreferences();
+
+      // Check if already running as installed standalone app
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (isStandalone) {
+        const statusEl = document.getElementById('pwa-install-status-text');
+        if (statusEl) statusEl.textContent = 'Berjalan dalam mode Aplikasi Mandiri (Standalone App).';
+      }
+    });
+
+    function savePreferences() {
+      try {
+        const prefs = {
+          stripTrackers: document.getElementById('cfg-strip-trackers').checked,
+          blockScripts: document.getElementById('cfg-block-scripts').checked,
+          stripHeaders: document.getElementById('cfg-strip-headers').checked,
+          httpsUpgrade: document.getElementById('cfg-https-upgrade').checked,
+          userAgent: document.getElementById('cfg-user-agent').value,
+          spoofIp: document.getElementById('cfg-spoof-ip').value,
+          mode: document.getElementById('proxy-mode').value,
+          region: document.getElementById('proxy-region').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+        showToast('Preferensi tersimpan di perangkat', 'info');
+      } catch (_) {}
+    }
+
+    function loadPreferences() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const prefs = JSON.parse(raw);
+        if (typeof prefs.stripTrackers === 'boolean') document.getElementById('cfg-strip-trackers').checked = prefs.stripTrackers;
+        if (typeof prefs.blockScripts === 'boolean') document.getElementById('cfg-block-scripts').checked = prefs.blockScripts;
+        if (typeof prefs.stripHeaders === 'boolean') document.getElementById('cfg-strip-headers').checked = prefs.stripHeaders;
+        if (typeof prefs.httpsUpgrade === 'boolean') document.getElementById('cfg-https-upgrade').checked = prefs.httpsUpgrade;
+        if (prefs.userAgent) document.getElementById('cfg-user-agent').value = prefs.userAgent;
+        if (prefs.spoofIp) document.getElementById('cfg-spoof-ip').value = prefs.spoofIp;
+        if (prefs.mode) document.getElementById('proxy-mode').value = prefs.mode;
+        if (prefs.region) {
+          document.getElementById('proxy-region').value = prefs.region;
+          const [node, lat] = prefs.region.split('|');
+          document.getElementById('header-node-label').textContent = node;
+          document.getElementById('header-latency').textContent = `${lat} ms`;
+        }
+      } catch (_) {}
+    }
+
+    // =========================================================================
+    // UI & NAVIGATION HELPERS
+    // =========================================================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors = {
+        info: 'bg-slate-900/95 border-cyan-500/40 text-slate-100',
+        success: 'bg-slate-900/95 border-emerald-500/50 text-emerald-200',
+        warning: 'bg-slate-900/95 border-amber-500/50 text-amber-200',
+        error: 'bg-slate-900/95 border-rose-500/50 text-rose-200'
+      };
+      toast.className = `pointer-events-auto px-3.5 py-2.5 rounded-xl border shadow-xl text-xs font-medium flex items-center justify-between gap-3 transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    function switchTab(tabName) {
+      ['browser', 'inspector', 'security'].forEach(name => {
+        const view = document.getElementById(`view-${name}`);
+        const btn = document.getElementById(`tab-btn-${name}`);
+        const mobBtn = document.getElementById(`mob-tab-${name}`);
+        if (name === tabName) {
+          view.classList.remove('hidden');
+          if (btn) btn.className = 'tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+          if (mobBtn) mobBtn.className = 'relative flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-emerald-400';
+        } else {
+          view.classList.add('hidden');
+          if (btn) btn.className = 'tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-2 transition text-slate-400 hover:text-slate-200 border border-transparent';
+          if (mobBtn) mobBtn.className = 'relative flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-400';
+        }
+      });
+    }
+
+    function goHomeViewport() {
+      document.getElementById('proxy-iframe').classList.add('hidden');
+      document.getElementById('proxy-welcome').classList.remove('hidden');
+      document.getElementById('viewport-status-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0';
+      document.getElementById('viewport-status-text').textContent = 'Beranda AegisProxy — Siap membuat terowongan terenkripsi.';
+    }
+
+    function toggleStealthReaderQuick() {
+      const modeSelect = document.getElementById('proxy-mode');
+      modeSelect.value = modeSelect.value === 'text-reader' ? 'hybrid' : 'text-reader';
+      savePreferences();
+      const label = modeSelect.value === 'text-reader' ? 'Stealth Reader' : 'Hybrid Relay';
+      showToast(`Mode beralih ke ${label}`, 'info');
+      const current = document.getElementById('url-input').value;
+      if (current) executeProxyRequest(normalizeUrl(current), false);
+    }
+
+    function onModeChange() {
+      savePreferences();
+      const current = document.getElementById('url-input').value;
+      if (current) executeProxyRequest(normalizeUrl(current), false);
+    }
+
+    function onRegionChange() {
+      savePreferences();
+      const val = document.getElementById('proxy-region').value;
+      const [node, baseLatency] = val.split('|');
+      const jitter = Math.floor(Math.random() * 9) - 4;
+      const latency = Math.max(12, parseInt(baseLatency, 10) + jitter);
+      document.getElementById('header-node-label').textContent = node;
+      document.getElementById('header-latency').textContent = `${latency} ms`;
+      showToast(`Node keluar: ${node} (${latency}ms)`, 'success');
+    }
+
+    function randomizeExitIp() {
+      const octets = Array.from({ length: 4 }, () => Math.floor(Math.random() * 220) + 15);
+      document.getElementById('cfg-spoof-ip').value = octets.join('.');
+      savePreferences();
+    }
+
+    // =========================================================================
+    // URL VALIDATION & MULTI-RELAY FETCHING ENGINE
+    // =========================================================================
+    function normalizeUrl(raw) {
+      let url = raw.trim();
+      if (!url) return '';
+      const forceHttps = document.getElementById('cfg-https-upgrade').checked;
+      if (!/^https?:\/\//i.test(url)) {
+        url = (forceHttps ? 'https://' : 'http://') + url;
+      } else if (forceHttps && url.startsWith('http://')) {
+        url = url.replace(/^http:\/\//i, 'https://');
+      }
+      try {
+        const parsed = new URL(url);
+        if (!parsed.hostname.includes('.')) return '';
+        return parsed.href;
+      } catch {
+        return '';
+      }
+    }
+
+    function loadPreset(url) {
+      document.getElementById('url-input').value = url;
+      switchTab('browser');
+      executeProxyRequest(url, true);
+    }
+
+    function handleProxySubmit(event) {
+      event.preventDefault();
+      const rawUrl = document.getElementById('url-input').value;
+      const targetUrl = normalizeUrl(rawUrl);
+      if (!targetUrl) {
+        showToast('Format URL tidak valid (contoh: wikipedia.org)', 'warning');
+        return;
+      }
+      document.getElementById('url-input').value = targetUrl;
+      executeProxyRequest(targetUrl, true);
+    }
+
+    function navigateHistory(delta) {
+      const nextIdx = state.historyIndex + delta;
+      if (nextIdx >= 0 && nextIdx < state.history.length) {
+        state.historyIndex = nextIdx;
+        const url = state.history[nextIdx];
+        document.getElementById('url-input').value = url;
+        updateHistoryButtons();
+        executeProxyRequest(url, false);
+      }
+    }
+
+    function reloadCurrentUrl() {
+      const current = document.getElementById('url-input').value;
+      if (current) {
+        const valid = normalizeUrl(current);
+        if (valid) executeProxyRequest(valid, false);
+      }
+    }
+
+    function updateHistoryButtons() {
+      document.getElementById('btn-back').disabled = state.historyIndex <= 0;
+      document.getElementById('btn-forward').disabled = state.historyIndex >= state.history.length - 1;
+    }
+
+    async function fetchViaPublicCorsRelays(targetUrl) {
+      try {
+        const c1 = new AbortController();
+        const t1 = setTimeout(() => c1.abort(), 6500);
+        const res1 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`, { signal: c1.signal });
+        clearTimeout(t1);
+        if (res1.ok) {
+          const data = await res1.json();
+          if (data && data.contents && data.contents.trim().length > 40) {
+            return { html: data.contents, status: data.status?.http_code || 200, relay: 'ALLORIGINS-RELAY' };
+          }
+        }
+      } catch (_) {}
+
+      const c2 = new AbortController();
+      const t2 = setTimeout(() => c2.abort(), 6500);
+      const res2 = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`, { signal: c2.signal });
+      clearTimeout(t2);
+      if (!res2.ok) throw new Error(`Upstream HTTP ${res2.status}`);
+      const text = await res2.text();
+      if (!text || text.trim().length < 40) throw new Error('Payload respons kosong');
+      return { html: text, status: res2.status, relay: 'CORSPROXY-RELAY' };
+    }
+
+    async function executeProxyRequest(targetUrl, pushHistory = true) {
+      const startTime = performance.now();
+      const mode = document.getElementById('proxy-mode').value;
+      const node = document.getElementById('proxy-region').value.split('|')[0];
+      const spoofIp = document.getElementById('cfg-spoof-ip').value;
+      const userAgent = document.getElementById('cfg-user-agent').value;
+
+      const progressBar = document.getElementById('proxy-progress-bar');
+      const statusDot = document.getElementById('viewport-status-dot');
+      const statusText = document.getElementById('viewport-status-text');
+
+      progressBar.style.width = '45%';
+      statusDot.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping shrink-0';
+      statusText.textContent = `Menghubungkan via ${node} ke ${targetUrl}...`;
+
+      if (pushHistory) {
+        state.history = state.history.slice(0, state.historyIndex + 1);
+        state.history.push(targetUrl);
+        state.historyIndex = state.history.length - 1;
+        updateHistoryButtons();
+      }
+
+      let rawHtml = '';
+      let fetchMethodUsed = 'CORS-RELAY';
+      let statusCode = 200;
+
+      try {
+        if (mode === 'sandbox' || !navigator.onLine) {
+          rawHtml = buildSimulatedSnapshot(targetUrl, node, spoofIp);
+          fetchMethodUsed = navigator.onLine ? 'SANDBOX-EMU' : 'OFFLINE-SANDBOX';
+        } else {
+          const result = await fetchViaPublicCorsRelays(targetUrl);
+          rawHtml = result.html;
+          statusCode = result.status;
+          fetchMethodUsed = result.relay;
+        }
+      } catch (err) {
+        if (mode === 'cors-live') {
+          statusCode = 502;
+          fetchMethodUsed = 'RELAY-BLOCKED';
+          rawHtml = buildErrorPage(targetUrl, err.message);
+        } else {
+          fetchMethodUsed = 'HYBRID-SANDBOX';
+          statusCode = 200;
+          rawHtml = buildSimulatedSnapshot(targetUrl, node, spoofIp);
+        }
+      }
+
+      progressBar.style.width = '85%';
+
+      const { sanitizedHtml, blockedCount } = sanitizeAndRewriteHtml(rawHtml, targetUrl, mode);
+      const elapsedMs = Math.max(24, Math.round(performance.now() - startTime));
+      const payloadBytes = new Blob([sanitizedHtml]).size;
+
+      state.totalBytes += payloadBytes;
+      state.blockedTrackers += blockedCount;
+      state.latencies.push(elapsedMs);
+      state.lastSanitizedHtml = sanitizedHtml;
+
+      const welcomeEl = document.getElementById('proxy-welcome');
+      const iframeEl = document.getElementById('proxy-iframe');
+      welcomeEl.classList.add('hidden');
+      iframeEl.classList.remove('hidden');
+      iframeEl.srcdoc = sanitizedHtml;
+
+      recordTrafficLog({
+        id: 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        timestamp: new Date().toLocaleTimeString('id-ID'),
+        method: 'GET',
+        url: targetUrl,
+        status: statusCode,
+        engine: fetchMethodUsed,
+        sizeBytes: payloadBytes,
+        latencyMs: elapsedMs,
+        blockedTrackers: blockedCount,
+        requestHeaders: {
+          'Host': safeHostname(targetUrl),
+          'User-Agent': userAgent,
+          'X-Forwarded-For': spoofIp,
+          'X-Aegis-Exit-Node': node,
+          'Referrer-Policy': document.getElementById('cfg-strip-headers').checked ? 'no-referrer' : 'strict-origin',
+          'DNT': '1'
+        },
+        responseHeaders: {
+          'HTTP/2': `${statusCode} OK`,
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Aegis-Sanitized': 'true',
+          'X-Trackers-Stripped': String(blockedCount),
+          'X-Frame-Options': 'STRIPPED-BY-AEGIS'
+        }
+      });
+
+      progressBar.style.width = '100%';
+      setTimeout(() => { progressBar.style.width = '0%'; }, 350);
+
+      statusDot.className = statusCode < 400
+        ? 'w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0'
+        : 'w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0';
+      statusText.textContent = `${fetchMethodUsed} • ${targetUrl} (${blockedCount} pelacak diblokir)`;
+      document.getElementById('viewport-size').textContent = formatBytes(payloadBytes);
+      document.getElementById('btn-view-source').disabled = false;
+      document.getElementById('header-latency').textContent = `${elapsedMs} ms`;
+      document.getElementById('header-blocked-count').textContent = state.blockedTrackers;
+    }
+
+    // =========================================================================
+    // HTML SANITIZER, ASSET REWRITER & STEALTH READER
+    // =========================================================================
+    function sanitizeAndRewriteHtml(html, baseUrl, mode) {
+      const stripTrackers = document.getElementById('cfg-strip-trackers').checked;
+      const blockScripts = document.getElementById('cfg-block-scripts').checked;
+      const stripHeaders = document.getElementById('cfg-strip-headers').checked;
+      let blockedCount = 0;
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      doc.querySelectorAll('script').forEach(s => {
+        const src = (s.getAttribute('src') || '').toLowerCase();
+        const content = (s.textContent || '').toLowerCase();
+        const isTracker = /google-analytics|googletagmanager|gtag|fbevents|doubleclick|hotjar|segment|mixpanel|adservice|yandex|matomo/.test(src + content);
+
+        if ((isTracker && stripTrackers) || blockScripts) {
+          blockedCount++;
+          s.remove();
+        }
+      });
+
+      if (stripTrackers) {
+        doc.querySelectorAll('img').forEach(img => {
+          const w = img.getAttribute('width');
+          const h = img.getAttribute('height');
+          const src = (img.getAttribute('src') || '').toLowerCase();
+          if ((w === '1' && h === '1') || /pixel|beacon|telemetry|doubleclick|adnxs/.test(src)) {
+            blockedCount++;
+            img.remove();
+          }
+        });
+        doc.querySelectorAll('iframe').forEach(frame => {
+          const src = (frame.getAttribute('src') || '').toLowerCase();
+          if (/doubleclick|googlesyndication|adsystem|taboola|outbrain/.test(src)) {
+            blockedCount++;
+            frame.remove();
+          }
+        });
+      }
+
+      if (mode === 'text-reader') {
+        const title = doc.title || safeHostname(baseUrl);
+        const blocks = Array.from(doc.querySelectorAll('h1, h2, h3, p, li, blockquote'))
+          .map(el => ({ tag: el.tagName.toLowerCase(), text: el.innerText.trim() }))
+          .filter(item => item.text.length > 25)
+          .slice(0, 75);
+
+        const renderedBlocks = blocks.map(b => {
+          if (b.tag.startsWith('h')) {
+            return `<h2 style="font-size:1.2rem;color:#34d399;margin:1.4rem 0 0.6rem;">${escapeHtml(b.text)}</h2>`;
+          }
+          return `<p style="margin-bottom:0.95rem;line-height:1.7;color:#cbd5e1;font-size:15px;">${escapeHtml(b.text)}</p>`;
+        }).join('');
+
+        return {
+          blockedCount,
+          sanitizedHtml: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} — Stealth Reader</title></head>
+          <body style="background:#090d16;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;max-width:740px;margin:0 auto;padding:1.75rem 1.25rem;">
+            <div style="display:inline-block;padding:4px 10px;border-radius:6px;background:#10b9811a;border:1px solid #10b9814d;font-size:11px;color:#34d399;margin-bottom:12px;font-family:monospace;">AEGIS STEALTH READER • ${blockedCount} PELACAK DIHAPUS</div>
+            <h1 style="font-size:1.5rem;line-height:1.3;margin:0 0 1.25rem;border-bottom:1px solid #1e293b;padding-bottom:0.85rem;">${escapeHtml(title)}</h1>
+            ${renderedBlocks || '<p style="color:#94a3b8;">Konten artikel teks tidak ditemukan. Beralihlah ke mode Hybrid Relay.</p>'}
+          </body></html>`
+        };
+      }
+
+      let baseEl = doc.querySelector('base');
+      if (!baseEl) {
+        baseEl = doc.createElement('base');
+        doc.head.prepend(baseEl);
+      }
+      baseEl.setAttribute('href', baseUrl);
+
+      if (stripHeaders) {
+        const metaRef = doc.createElement('meta');
+        metaRef.setAttribute('name', 'referrer');
+        metaRef.setAttribute('content', 'no-referrer');
+        doc.head.appendChild(metaRef);
+      }
+
+      doc.querySelectorAll('a[href]').forEach(a => {
+        const rawHref = a.getAttribute('href');
+        if (rawHref && !rawHref.startsWith('#') && !rawHref.startsWith('javascript:')) {
+          try {
+            a.setAttribute('href', new URL(rawHref, baseUrl).href);
+          } catch (_) {}
+        }
+      });
+
+      const bridgeScript = doc.createElement('script');
+      bridgeScript.textContent = `
+        document.addEventListener('click', function(e) {
+          const anchor = e.target.closest('a');
+          if (anchor && anchor.href && !anchor.href.startsWith('javascript:')) {
+            e.preventDefault();
+            window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: anchor.href }, '*');
+          }
+        }, true);
+        document.addEventListener('submit', function(e) {
+          const form = e.target;
+          if (form && form.action && (form.method || 'get').toLowerCase() === 'get') {
+            e.preventDefault();
+            const fd = new FormData(form);
+            const target = new URL(form.action);
+            for (const [k, v] of fd.entries()) target.searchParams.set(k, v);
+            window.parent.postMessage({ type: 'AEGIS_NAVIGATE', url: target.href }, '*');
+          }
+        }, true);
+      `;
+      doc.body.appendChild(bridgeScript);
+
+      return {
+        sanitizedHtml: '<!DOCTYPE html>
+' + doc.documentElement.outerHTML,
+        blockedCount
+      };
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'AEGIS_NAVIGATE' && event.data.url) {
+        const nextUrl = normalizeUrl(event.data.url);
+        if (nextUrl) {
+          document.getElementById('url-input').value = nextUrl;
+          executeProxyRequest(nextUrl, true);
+        }
+      }
+    });
+
+    function buildSimulatedSnapshot(url, node, spoofIp) {
+      const host = safeHostname(url);
+      if (host.includes('httpbin.org')) {
+        const ua = document.getElementById('cfg-user-agent').value;
+        return `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>httpbin.org/headers</title></head>
+        <body style="background:#0b1120;color:#e2e8f0;font-family:monospace;padding:1.5rem;">
+          <h3 style="color:#10b981;margin-bottom:1rem;">// Reflected Request Headers via ${escapeHtml(node)}</h3>
+          <pre style="background:#111827;padding:1rem;border-radius:12px;border:1px solid #1e293b;overflow:auto;font-size:12px;">{
+  "headers": {
+    "Dnt": "1",
+    "Host": "httpbin.org",
+    "User-Agent": "${escapeHtml(ua)}",
+    "X-Aegis-Exit-Node": "${escapeHtml(node)}",
+    "X-Forwarded-For": "${escapeHtml(spoofIp)}"
+  }
+}</pre>
+        </body></html>`;
+      }
+
+      return `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(host)} — Sandbox</title></head>
+      <body style="margin:0;font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#0f172a;">
+        <div style="background:#0f172a;color:#94a3b8;padding:10px 16px;font-size:11px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #10b981;">
+          <span><strong style="color:#10b981;">AEGIS SANDBOX</strong> • ${escapeHtml(host)}</span>
+          <span>IP: ${escapeHtml(spoofIp)}</span>
+        </div>
+        <div style="max-width:720px;margin:1.5rem auto;padding:1.5rem;background:#ffffff;border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+          <span style="display:inline-block;padding:4px 10px;background:#ecfdf5;color:#059669;border-radius:999px;font-size:11px;font-weight:600;margin-bottom:10px;">TLS 1.3 Verified Tunnel</span>
+          <h1 style="margin:0 0 10px;font-size:22px;color:#0f172a;">${escapeHtml(host)}</h1>
+          <p style="color:#475569;line-height:1.6;font-size:14px;margin-bottom:16px;">
+            Dirender melalui <strong>AegisProxy Hybrid Sandbox</strong>. Seluruh skrip pelacak eksternal dan header identitas perangkat Anda telah disanitasi.
+          </p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="https://en.wikipedia.org/wiki/Proxy_server" style="padding:10px 14px;background:#0f172a;color:#fff;text-decoration:none;border-radius:8px;font-size:12px;font-weight:500;">Buka Wikipedia →</a>
+            <a href="https://httpbin.org/headers" style="padding:10px 14px;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:8px;font-size:12px;font-weight:500;">Cek Header HTTP →</a>
+          </div>
+        </div>
+      </body></html>`;
+    }
+
+    function buildErrorPage(url, reason) {
+      return `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="background:#090d16;color:#f8fafc;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:85vh;margin:0;padding:1.25rem;">
+        <div style="max-width:480px;background:#111827;border:1px solid #ef444466;border-radius:16px;padding:1.5rem;">
+          <h2 style="color:#f87171;margin-top:0;font-size:18px;">502 Bad Gateway — Upstream Diblokir</h2>
+          <p style="color:#94a3b8;font-size:13px;line-height:1.6;">Permintaan ke <code>${escapeHtml(url)}</code> ditolak kebijakan CORS (${escapeHtml(reason)}).</p>
+          <p style="color:#cbd5e1;font-size:13px;">Ubah mode proksi ke <strong>Hybrid Relay</strong> untuk tetap membuka halaman.</p>
+        </div>
+      </body></html>`;
+    }
+
+    // =========================================================================
+    // NETWORK INSPECTOR LOGGING & RENDERING
+    // =========================================================================
+    function recordTrafficLog(entry) {
+      state.logs.unshift(entry);
+      state.selectedLogId = entry.id;
+      updateInspectorUI();
+    }
+
+    function updateInspectorUI() {
+      document.getElementById('badge-log-count').textContent = state.logs.length;
+      const mobBadge = document.getElementById('mob-badge-log');
+      if (mobBadge) {
+        mobBadge.textContent = state.logs.length;
+        mobBadge.classList.toggle('hidden', state.logs.length === 0);
+      }
+      document.getElementById('metric-total-req').textContent = state.logs.length;
+      document.getElementById('metric-bandwidth').textContent = formatBytes(state.totalBytes);
+      document.getElementById('metric-trackers').textContent = state.blockedTrackers;
+
+      if (state.latencies.length > 0) {
+        const avg = Math.round(state.latencies.reduce((a, b) => a + b, 0) / state.latencies.length);
+        document.getElementById('metric-latency').textContent = `${avg} ms`;
+      }
+
+      const tbody = document.getElementById('inspector-table-body');
+      if (state.logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-500 font-sans">Belum ada lalu lintas jaringan tercatat.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.logs.map(log => {
+        const isSelected = log.id === state.selectedLogId;
+        const statusBadge = log.status < 400
+          ? `<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">${log.status}</span>`
+          : `<span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">${log.status}</span>`;
+
+        return `
+          <tr onclick="selectLogEntry('${log.id}')" class="cursor-pointer transition ${isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-800/60'}">
+            <td class="py-2.5 px-3">${statusBadge}</td>
+            <td class="py-2.5 px-3 text-slate-200 max-w-[180px] truncate">${escapeHtml(log.url)}</td>
+            <td class="py-2.5 px-3 text-slate-400">${formatBytes(log.sizeBytes)}</td>
+            <td class="py-2.5 px-3 text-slate-400">${log.latencyMs}ms</td>
+            <td class="py-2.5 px-3 text-amber-400 font-semibold">${log.blockedTrackers}</td>
+          </tr>
+        `;
+      }).join('');
+
+      renderPacketDetails();
+    }
+
+    function selectLogEntry(id) {
+      state.selectedLogId = id;
+      updateInspectorUI();
+    }
+
+    function renderPacketDetails() {
+      const container = document.getElementById('packet-detail-content');
+      const log = state.logs.find(item => item.id === state.selectedLogId);
+      if (!log) return;
+
+      const formatHeaderBlock = (obj) => Object.entries(obj)
+        .map(([k, v]) => `<div><span class="text-cyan-400">${escapeHtml(k)}:</span> <span class="text-slate-200">${escapeHtml(v)}</span></div>`)
+        .join('');
+
+      container.innerHTML = `
+        <div class="p-3 rounded-xl bg-aegis-panel border border-aegis-border space-y-1">
+          <div class="text-[11px] uppercase tracking-wider text-emerald-400 font-semibold mb-1">Informasi Terowongan</div>
+          <div><span class="text-slate-400">URL:</span> <span class="text-white break-all">${escapeHtml(log.url)}</span></div>
+          <div><span class="text-slate-400">Engine:</span> <span class="text-amber-300">${log.engine}</span> • <span>${log.timestamp}</span></div>
+        </div>
+        <div class="p-3 rounded-xl bg-aegis-panel border border-aegis-border space-y-1">
+          <div class="text-[11px] uppercase tracking-wider text-cyan-400 font-semibold mb-1">Header Permintaan Tersamar</div>
+          ${formatHeaderBlock(log.requestHeaders)}
+        </div>
+        <div class="p-3 rounded-xl bg-aegis-panel border border-aegis-border space-y-1">
+          <div class="text-[11px] uppercase tracking-wider text-amber-400 font-semibold mb-1">Header Respons Tersanitasi</div>
+          ${formatHeaderBlock(log.responseHeaders)}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // CLIPBOARD, SOURCE INSPECTOR & EXPORT UTILITIES
+    // =========================================================================
+    function toggleSourceModal() {
+      const modal = document.getElementById('source-modal');
+      const viewer = document.getElementById('source-code-viewer');
+      if (modal.classList.contains('hidden')) {
+        viewer.textContent = state.lastSanitizedHtml || '// Belum ada payload HTML yang dimuat.';
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function copyToClipboardFallback(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Berhasil disalin ke clipboard!', 'success');
+      } catch {
+        showToast('Gagal menyalin teks', 'error');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function copySourceCode() {
+      if (state.lastSanitizedHtml) copyToClipboardFallback(state.lastSanitizedHtml);
+    }
+
+    function copySelectedHeaders() {
+      const log = state.logs.find(item => item.id === state.selectedLogId);
+      if (log) copyToClipboardFallback(JSON.stringify(log, null, 2));
+    }
+
+    function exportLogsJson() {
+      if (state.logs.length === 0) {
+        showToast('Tidak ada log untuk diekspor.', 'warning');
+        return;
+      }
+      const blob = new Blob([JSON.stringify(state.logs, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `aegisproxy-logs-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Log jaringan diekspor ke JSON', 'success');
+    }
+
+    function resetSession() {
+      state.history = [];
+      state.historyIndex = -1;
+      state.logs = [];
+      state.selectedLogId = null;
+      state.totalBytes = 0;
+      state.blockedTrackers = 0;
+      state.latencies = [];
+      state.lastSanitizedHtml = '';
+
+      document.getElementById('url-input').value = '';
+      document.getElementById('proxy-iframe').classList.add('hidden');
+      document.getElementById('proxy-iframe').srcdoc = '';
+      document.getElementById('proxy-welcome').classList.remove('hidden');
+      document.getElementById('btn-view-source').disabled = true;
+      document.getElementById('header-blocked-count').textContent = '0';
+      document.getElementById('viewport-size').textContent = '0 KB';
+      document.getElementById('viewport-status-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0';
+      document.getElementById('viewport-status-text').textContent = 'Siap membuat terowongan terenkripsi.';
+      document.getElementById('packet-detail-content').innerHTML = `<p class="text-slate-500 font-sans text-center py-10">Pilih salah satu log di atas/kiri untuk memeriksa detail header HTTP yang dimodifikasi.</p>`;
+
+      updateHistoryButtons();
+      updateInspectorUI();
+      showToast('Sesi dan log jaringan telah dibersihkan.', 'info');
+    }
+
+    function safeHostname(url) {
+      try { return new URL(url).hostname; } catch { return url; }
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "AegisProxy — Web Proxy & Network Inspector",
+  "short_name": "AegisProxy",
+  "description": "Aplikasi Web Proxy terenkripsi, pemblokir pelacak otomatis, Stealth Reader, dan HTTP Packet Inspector mandiri.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "categories": ["utilities", "developer", "security"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

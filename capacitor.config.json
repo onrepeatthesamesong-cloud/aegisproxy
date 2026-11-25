@@ -1,0 +1,11 @@
+{
+  "appId": "id.aegisproxy.inspector",
+  "appName": "AegisProxy",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
